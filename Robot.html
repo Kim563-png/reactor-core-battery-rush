@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REACTOR CORE: Battery Rush - Ultimate 15-Stage Campaign</title>
+    <!-- นำเข้าฟอนต์ Prompt จาก Google Fonts เพื่อความสวยงามและอ่านง่าย -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* ==========================================================================
+           1. GLOBAL RESET & BASE STYLES
+           การรีเซ็ตค่าเริ่มต้นของเบราว์เซอร์ และกำหนดฟอนต์หลักให้ทุก element
+           ========================================================================== */
+        * { box-sizing: border-box; font-family: 'Prompt', sans-serif; }
+        
+        body {
+            background-color: #0b0c10;
+            background-image: 
+                linear-gradient(rgba(255, 170, 0, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 170, 0, 0.03) 1px, transparent 1px);
+            background-size: 20px 20px;
+            color: #c5c6c7; text-align: center; margin: 0; padding: 20px;
+            min-height: 100vh; display: flex; justify-content: center; align-items: center;
+            transition: background 0.5s ease;
+        }
+
+        /* เอฟเฟกต์กระพริบหน้าจอเป็นสีแดง เมื่อเวลาใกล้หมดหรือเกิดวิกฤต */
+        body.alarm-bg { animation: bodyFlash 0.4s infinite alternate; }
+        @keyframes bodyFlash {
+            0% { background-color: #1a0808; }
+            100% { background-color: #4a0000; }
+        }
+
+        /* ==========================================================================
+           2. CONTAINER & UI COMPONENT STYLES
+           การตกแต่งกรอบคอนเทนเนอร์หลักของเกม แผงข้อมูล และหัวข้อต่างๆ
+           ========================================================================== */
+        .container {
+            max-width: 1050px; width: 100%; background: rgba(15, 17, 21, 0.95);
+            border: 3px solid #ffaa00; padding: 35px; border-radius: 6px;
+            box-shadow: 0 0 25px rgba(255, 170, 0, 0.2), inset 0 0 15px rgba(255, 170, 0, 0.05);
+            position: relative; overflow: hidden; transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .container.pressure-pulse { border-color: #ff3300; box-shadow: 0 0 35px rgba(255, 51, 0, 0.6); }
+
+        h1 { color: #ffaa00; margin-bottom: 5px; font-size: 28px; font-weight: 800; letter-spacing: 1px; text-shadow: 0 0 10px rgba(255, 170, 0, 0.4); }
+        .subtitle { color: #8c92a4; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; }
+        
+        /* ป้ายแสดงสถานะด่านปัจจุบัน */
+        .stage-indicator {
+            display: inline-block; background: #ffaa00; color: #0b0c10;
+            padding: 4px 15px; border-radius: 20px; font-size: 13px; font-weight: 800;
+            margin-bottom: 15px; text-transform: uppercase; box-shadow: 0 0 10px rgba(255, 170, 0, 0.4);
+        }
+
+        /* ปุ่มเปิดคู่มือและปุ่มควบคุมทั่วไป */
+        .btn-help {
+            background: #1f2833; color: #ffaa00; border: 1px solid #ffaa00;
+            padding: 5px 12px; border-radius: 4px; font-size: 12px; font-weight: 700;
+            cursor: pointer; transition: all 0.2s; margin-left: 5px; margin-right: 5px;
+        }
+        .btn-help:hover { background: #ffaa00; color: #0b0c10; box-shadow: 0 0 10px rgba(255, 170, 0, 0.4); }
+
+        /* แผงแสดงข้อมูลสถานะเกมระหว่างเล่น (อัลกอริทึม, จำนวนครั้ง, เวลาที่เหลือ) */
+        .info-panel {
+            background: #111318; border: 2px solid #2a313d; padding: 12px 20px;
+            border-radius: 4px; margin: 15px 0; display: flex; justify-content: space-around;
+            align-items: center; font-size: 14px; border-left: 6px solid #ff3300; flex-wrap: wrap; gap: 10px;
+        }
+        .info-panel span { color: #ffaa00; font-weight: 700; }
+        .info-panel .timer-alert { color: #ff3300; }
+        
+        /* กล่องข้อความแนะนำภารกิจประจำด่าน */
+        #instruction {
+            background: rgba(255, 170, 0, 0.05); color: #ffaa00; padding: 12px;
+            border-radius: 4px; font-size: 13px; font-weight: 500; margin-bottom: 25px;
+            border: 1px dashed rgba(255, 170, 0, 0.3);
+        }
+
+        /* ==========================================================================
+           3. BATTERY BAY & CELL STYLES
+           พื้นที่ช่องวางแบตเตอรี่ และดีไซน์ของก้อนเซลล์แบตเตอรี่แต่ละสถานะ
+           ========================================================================== */
+        .battery-bay {
+            display: flex; justify-content: center; gap: 8px; margin: 20px 0;
+            min-height: 120px; align-items: center; background: #08090c; padding: 20px;
+            border-radius: 6px; border: 2px inset #1f2833; position: relative; flex-wrap: wrap;
+        }
+
+        .battery-cell {
+            width: 62px; height: 95px; background: linear-gradient(135deg, #2b3342, #181d26);
+            color: #ffaa00; border: 3px solid #454d5a; font-size: 20px; font-weight: 800;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            border-radius: 6px; cursor: pointer; box-shadow: inset 0 0 10px rgba(0,0,0,0.8), 0 4px 6px rgba(0,0,0,0.3);
+            transition: all 0.2s ease; user-select: none; position: relative;
+        }
+        /* ขั้วแบตเตอรี่จำลองด้านบน */
+        .battery-cell::before {
+            content: ''; position: absolute; top: -7px; width: 16px; height: 5px;
+            background: #454d5a; border-radius: 2px;
+        }
+        .battery-cell:hover { border-color: #ffaa00; transform: translateY(-4px); }
+        
+        /* สถานะเมื่อเซลล์แบตเตอรี่ถูกเลือก (Selected) */
+        .battery-cell.selected {
+            background: linear-gradient(135deg, #591b0c, #330e05); color: #ff3300; border-color: #ff3300;
+            transform: translateY(-8px) scale(1.05); box-shadow: 0 0 20px rgba(255, 51, 0, 0.7);
+        }
+        .battery-cell.selected::before { background: #ff3300; }
+        
+        /* สถานะเมื่อเซลล์แบตเตอรี่เรียงถูกต้องสมบูรณ์แล้ว (Sorted) */
+        .battery-cell.sorted {
+            background: linear-gradient(135deg, #093824, #041d12); color: #00ff66; border-color: #00ff66;
+            box-shadow: 0 0 15px rgba(0, 255, 102, 0.4);
+        }
+        .battery-cell.sorted::before { background: #00ff66; }
+        
+        .action-group { display: flex; justify-content: center; gap: 15px; margin-top: 15px; flex-wrap: wrap; }
+        .hidden-in-menu { display: none !important; }
+
+        /* ==========================================================================
+           4. OVERLAYS & MODALS STYLES
+           หน้าต่างทับซ้อน (Modals/Overlays) สำหรับเมนูหลัก คู่มือ ผลสรุป และประวัติ
+           ========================================================================== */
+        .overlay-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(11, 12, 16, 0.98); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 100; 
+            opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+            padding: 20px; overflow-y: auto;
+        }
+        .overlay-screen.show { opacity: 1; pointer-events: auto; }
+        .overlay-title { font-size: 24px; font-weight: 800; margin-bottom: 8px; letter-spacing: 1px; }
+        .overlay-desc { color: #8c92a4; font-size: 12px; margin-bottom: 12px; letter-spacing: 1px; max-width: 650px; text-align: center; }
+        
+        /* กล่องข้อความกติกาในเมนูหลัก */
+        .rules-menu-box {
+            background: #111318; border: 2px solid #2a313d; padding: 12px 18px;
+            border-radius: 6px; text-align: left; max-width: 620px; width: 100%;
+            max-height: 25vh; overflow-y: auto; font-size: 12px; margin-bottom: 15px;
+        }
+        .rules-menu-box h3 { color: #ffaa00; margin-top: 0; margin-bottom: 6px; font-size: 14px; border-bottom: 1px solid #2a313d; padding-bottom: 3px; }
+        .rules-menu-box ul { padding-left: 18px; margin: 3px 0 5px 0; }
+        .rules-menu-box li { margin-bottom: 4px; color: #c5c6c7; }
+        .rules-menu-box strong { color: #ffaa00; }
+
+        /* กล่องเนื้อหาคู่มือเต็มรูปแบบ */
+        .rules-content {
+            background: #111318; border: 2px solid #2a313d; padding: 15px 20px;
+            border-radius: 6px; text-align: left; max-width: 650px; width: 100%;
+            max-height: 50vh; overflow-y: auto; font-size: 13px; margin-bottom: 15px;
+        }
+        .rules-content h3 { color: #ffaa00; margin-top: 0; margin-bottom: 8px; font-size: 15px; border-bottom: 1px solid #2a313d; padding-bottom: 4px; }
+        .rules-content ul { padding-left: 20px; margin: 5px 0 10px 0; }
+        .rules-content li { margin-bottom: 5px; color: #c5c6c7; }
+        .rules-content strong { color: #ffaa00; }
+
+        /* การจัดกลุ่มตัวเลือกโหมดและทิศทาง */
+        .menu-section-title { color: #ffaa00; font-size: 13px; font-weight: 700; margin: 8px 0 4px 0; text-transform: uppercase; letter-spacing: 1px; }
+        .options-group {
+            display: flex; gap: 8px; margin-bottom: 10px; justify-content: center; flex-wrap: wrap;
+        }
+        .option-card {
+            background: #111318; border: 2px solid #2a313d; padding: 8px 12px;
+            border-radius: 6px; cursor: pointer; color: #c5c6c7; font-weight: 700; font-size: 12px;
+            transition: all 0.2s; display: flex; align-items: center; gap: 6px; z-index: 101;
+        }
+        .option-card input { accent-color: #ffaa00; cursor: pointer; }
+        .option-card.active { border-color: #ffaa00; background: rgba(255, 170, 0, 0.1); color: #ffaa00; box-shadow: 0 0 10px rgba(255, 170, 0, 0.2); }
+
+        /* กล่องแสดงสถิติสรุปผล */
+        .stats-box {
+            background: #111318; border: 2px solid #2a313d; padding: 12px 20px;
+            border-radius: 6px; margin-bottom: 15px; font-size: 13px; text-align: left; width: 450px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        }
+        .stats-box div { margin: 6px 0; color: #c5c6c7; display: flex; justify-content: space-between; }
+        .stats-box span { color: #ffaa00; font-weight: 700; }
+        .stats-box .highlight-rank { color: #00ff66; font-size: 15px; font-weight: 800; }
+
+        /* ตารางประวัติการเล่นย้อนหลัง */
+        .history-table-container {
+            max-width: 650px; width: 100%; max-height: 220px; overflow-y: auto;
+            border: 1px solid #2a313d; border-radius: 4px; margin-bottom: 15px; background: #111318;
+        }
+        .history-table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; }
+        .history-table th { background: #1f2833; color: #ffaa00; padding: 6px; position: sticky; top: 0; }
+        .history-table td { padding: 5px; border-bottom: 1px solid #2a313d; color: #c5c6c7; }
+        
+        /* สไตล์ปุ่มกดกระทำต่างๆ (Action Buttons) */
+        .btn-action {
+            padding: 10px 22px; font-size: 13px; font-weight: 700; cursor: pointer;
+            background: #ffaa00; color: #0b0c10; border: none; border-radius: 4px;
+            text-transform: uppercase; transition: all 0.2s; box-shadow: 0 0 15px rgba(255, 170, 0, 0.3);
+            z-index: 101; position: relative;
+        }
+        .btn-action:hover { background: #ffbb22; box-shadow: 0 0 25px rgba(255, 170, 0, 0.6); transform: translateY(-2px); }
+        .btn-cancel { background: #2a313d; color: #c5c6c7; border: 2px solid #454d5a; box-shadow: none; }
+        .btn-cancel:hover { background: #3a4454; color: #fff; border-color: #ffaa00; box-shadow: 0 0 15px rgba(255, 170, 0, 0.2); }
+        .btn-reset { background: #ff3300; color: #fff; box-shadow: 0 0 15px rgba(255, 51, 0, 0.3); }
+        .btn-reset:hover { background: #ff4411; box-shadow: 0 0 25px rgba(255, 51, 0, 0.6); }
+        
+        #game-status { font-size: 18px; font-weight: 700; margin-top: 15px; min-height: 30px; letter-spacing: 1px; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="main-container">
+
+    <!-- ==========================================================================
+       HTML DOM STRUCTURE: START SCREEN & OVERLAYS
+       ========================================================================== -->
+
+    <!-- หน้าจอเริ่มต้นเกม (Main Menu / Start Screen) -->
+    <div id="start-screen" class="overlay-screen show">
+        <div class="overlay-title" style="color: #ffaa00;">⚡ REACTOR CORE: BATTERY RUSH ⚡</div>
+        <div class="overlay-desc">เลือกโหมดแคมเปญและทิศทางการเรียงลำดับพลังงาน (ตัวเลขหลักสิบแบบสุ่ม)</div>
+        
+        <!-- กล่องสรุปกติกาเบื้องต้น -->
+        <div class="rules-menu-box">
+            <h3>📜 กติกาและวิธีปฏิบัติภารกิจ</h3>
+            <ul>
+                <li><strong>Bubble Sort</strong>: เลือกแบตเตอรี่ 2 ก้อนที่อยู่ติดกันเท่านั้น เพื่อสลับตำแหน่ง</li>
+                <li><strong>Selection Sort</strong>: ค้นหาแบตเตอรี่เป้าหมายที่ถูกต้องในฝั่งขวา แล้วคลิกเพื่อดึงมาไว้ช่องซ้ายสุด</li>
+                <li><strong>Insertion Sort</strong>: เลือกแบตเตอรี่ก้อนที่ต้องการ แล้วคลิกช่องเป้าหมายเพื่อนำไปแทรก (Insert)</li>
+                <li><strong>เงื่อนไขการแพ้-ชนะ</strong>: เรียงตัวเลข (จำนวนหลักสิบ) ให้สำเร็จครบทุกเซลล์ก่อนเวลาหมดและไม่เกินโควต้า!</li>
+            </ul>
+        </div>
+
+        <!-- ตัวเลือกโหมดแคมเปญ -->
+        <div class="menu-section-title">เลือกโหมดแคมเปญ (Campaign Mode - 5 Stages Each)</div>
+        <div class="options-group">
+            <label class="option-card active" id="mode-card-bubble">
+                <input type="radio" name="game-mode" value="bubble" checked onclick="setGameMode('bubble')"> Bubble Sort
+            </label>
+            <label class="option-card" id="mode-card-selection">
+                <input type="radio" name="game-mode" value="selection" onclick="setGameMode('selection')"> Selection Sort
+            </label>
+            <label class="option-card" id="mode-card-insertion">
+                <input type="radio" name="game-mode" value="insertion" onclick="setGameMode('insertion')"> Insertion Sort
+            </label>
+        </div>
+
+        <!-- ตัวเลือกทิศทางการเรียงลำดับ -->
+        <div class="menu-section-title">ทิศทางการเรียงลำดับ (Sorting Direction)</div>
+        <div class="options-group">
+            <label class="option-card active" id="label-asc">
+                <input type="radio" name="sort-dir" value="asc" checked onclick="setSortDirection('asc')"> น้อยไปมาก (Ascending)
+            </label>
+            <label class="option-card" id="label-desc">
+                <input type="radio" name="sort-dir" value="desc" onclick="setSortDirection('desc')"> มากไปน้อย (Descending)
+            </label>
+        </div>
+
+        <div style="margin-top: 10px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+            <button class="btn-action" style="font-size: 13px; padding: 10px 24px;" onclick="startGameFromMenu()">🚀 เริ่มต้นภารกิจแคมเปญ</button>
+            <button class="btn-action btn-cancel" style="font-size: 13px; padding: 10px 20px;" onclick="openHistoryModal()">📊 ดูประวัติการเล่น</button>
+        </div>
+    </div>
+
+    <!-- Modal หน้าต่างดูประวัติการเล่นย้อนหลัง -->
+    <div id="history-modal" class="overlay-screen">
+        <div class="overlay-title" style="color: #ffaa00;">📊 [MISSION HISTORY LOGS] 📊</div>
+        <div class="overlay-desc">บันทึกสถิติผลการปฏิบัติภารกิจย้อนหลังทั้งหมดในระบบ</div>
+        
+        <div class="history-table-container" style="max-height: 32vh; margin-top: 10px;">
+            <table class="history-table" id="modal-history-table">
+                <thead>
+                    <tr>
+                        <th>เวลาบันทึก</th>
+                        <th>โหมด</th>
+                        <th>ทิศทาง</th>
+                        <th>เวลา (s)</th>
+                        <th>การกระทำ</th>
+                        <th>เกรด</th>
+                    </tr>
+                </thead>
+                <tbody id="modal-history-body">
+                    <!-- ข้อมูลประวัติจะถูกเติมอัตโนมัติผ่าน JavaScript -->
+                </tbody>
+            </table>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+            <button class="btn-action btn-reset" style="padding: 8px 16px; font-size: 12px;" onclick="clearHistoryData()">🗑️ ล้างประวัติ</button>
+            <button class="btn-action" style="padding: 8px 20px; font-size: 12px;" onclick="closeHistoryModal()">❌ ปิดหน้าต่าง</button>
+        </div>
+    </div>
+
+    <!-- Modal คู่มือและกติกาแบบเต็ม -->
+    <div id="help-modal" class="overlay-screen">
+        <div class="overlay-title" style="color: #ffaa00;">📜 [MISSION PROTOCOL MANUAL] 📜</div>
+        <div class="rules-content">
+            <h3>🎯 เป้าหมายของเกม (Objective)</h3>
+            <p>จัดเรียงเซลล์แบตเตอรี่ตัวเลขหลักสิบตามทิศทางที่เลือก ให้สำเร็จก่อนเวลาหรือโควต้าหมด!</p>
+            <h3>⚡ กติกาแต่ละ Algorithm</h3>
+            <ul>
+                <li><strong>Bubble Sort</strong>: เลือกแบตเตอรี่ 2 ก้อนที่อยู่ติดกันเท่านั้น เพื่อสลับตำแหน่ง</li>
+                <li><strong>Selection Sort</strong>: ค้นหาแบตเตอรี่เป้าหมายที่ถูกต้องในฝั่งขวา แล้วคลิกเพื่อดึงมาไว้ช่องซ้ายสุด</li>
+                <li><strong>Insertion Sort</strong>: เลือกแบตเตอรี่ก้อนที่ต้องการ แล้วคลิกช่องเป้าหมายเพื่อนำไปแทรก (Insert)</li>
+            </ul>
+        </div>
+        <button class="btn-action" onclick="closeHelpModal()">⚡ รับทราบ ปิดคู่มือ</button>
+    </div>
+
+    <!-- Modal แจ้งเตือนเมื่อทำผิดเงื่อนไขของอัลกอริทึม -->
+    <div id="warning-modal" class="overlay-screen">
+        <div class="overlay-title" style="color: #ffaa00;">⚠️ [PROTOCOL WARNING] ⚠️</div>
+        <div class="overlay-desc" id="warning-message" style="text-align: center;">ทำผิดเงื่อนไขของอัลกอริทึม!</div>
+        <button class="btn-action" onclick="closeWarningModal()">รับทราบ (ดำเนินการต่อ)</button>
+    </div>
+
+    <!-- หน้าจอ Game Over (ความล้มเหลว) -->
+    <div id="game-over-overlay" class="overlay-screen">
+        <div class="overlay-title" style="color: #ff3300;">⚙️ [CRITICAL FAILURE] ⚙️</div>
+        <div class="overlay-desc" id="over-message" style="text-align: center;">เวลาหรือโควต้าหมดลง! เครื่องจักรระเบิด</div>
+        <button class="btn-action" onclick="loadStage(currentStage)">⚡ ลองใหม่อีกครั้งในด่านนี้</button>
+    </div>
+
+    <!-- หน้าจอผ่านด่านย่อย (Stage Cleared) -->
+    <div id="stage-clear-overlay" class="overlay-screen">
+        <div class="overlay-title" style="color: #00ff66;">⚙️ [STAGE CLEARED] ⚙️</div>
+        <div class="overlay-desc" id="clear-message" style="text-align: center;">ผ่านด่านสำเร็จ! เตรียมพร้อมเข้าสู่ระดับถัดไป</div>
+        <button class="btn-action" onclick="nextStage()">⚡ ไปยังด่านถัดไป</button>
+    </div>
+
+    <!-- หน้าจอสรุปผลภาพรวมทั้งหมด (Mission Debriefing Summary) -->
+    <div id="victory-overlay" class="overlay-screen">
+        <div class="overlay-title" style="color: #00ff66;">🏆 [MISSION DEBRIEFING SUMMARY] 🏆</div>
+        <div class="overlay-desc" style="text-align: center;">บันทึกผลการปฏิบัติงานลงในฐานข้อมูลระบบเรียบร้อยแล้ว!</div>
+        
+        <div class="stats-box">
+            <div>โหมดแคมเปญ: <span id="summary-mode">-</span></div>
+            <div>ทิศทางการเรียง: <span id="summary-dir">-</span></div>
+            <div>เวลาสะสมรวมทั้ง 5 ด่าน: <span id="summary-time">-</span> วินาที</div>
+            <div>จำนวนครั้งการปฏิบัติงานรวม: <span id="summary-actions">-</span> ครั้ง</div>
+            <div>เกรดประสิทธิภาพ: <span id="summary-rank" class="highlight-rank">-</span></div>
+        </div>
+
+        <div class="menu-section-title" style="margin-top: 5px;">📜 ประวัติการเล่นล่าสุด</div>
+        <div class="history-table-container">
+            <table class="history-table" id="history-table-element">
+                <thead>
+                    <tr>
+                        <th>เวลาบันทึก</th>
+                        <th>โหมด</th>
+                        <th>ทิศทาง</th>
+                        <th>เวลา (s)</th>
+                        <th>การกระทำ</th>
+                        <th>เกรด</th>
+                    </tr>
+                </thead>
+                <tbody id="history-table-body">
+                    <!-- เติมข้อมูลผ่าน JavaScript -->
+                </tbody>
+            </table>
+        </div>
+
+        <button class="btn-action" onclick="returnToMainMenu()">🏠 กลับสู่หน้าจอหลัก</button>
+    </div>
+
+    <!-- ==========================================================================
+       MAIN GAMEPLAY INTERFACE
+       ========================================================================== -->
+    <h1>⚙️ REACTOR CORE: BATTERY RUSH ⚡</h1>
+    <div class="subtitle" id="main-subtitle">[ ALGORITHM CAMPAIGN ]</div>
+    
+    <div>
+        <div class="stage-indicator" id="stage-badge">STAGE 1: BUBBLE SORT</div>
+        <button class="btn-help" onclick="openHelpModal()">📖 คู่มือและกติกา</button>
+        <button class="btn-help" onclick="returnToMainMenu()" style="border-color: #ff3300; color: #ff3300;">🏠 เมนูหลัก</button>
+    </div>
+
+    <!-- แผงข้อมูลสถานะการเล่นด่านปัจจุบัน -->
+    <div class="info-panel">
+        <div>อัลกอริทึม: <span id="mode-name">Bubble Sort</span></div>
+        <div>การปฏิบัติงาน: <span id="swap-count">0</span> / <span id="max-swap-limit">18</span></div>
+        <div>เวลาที่เหลือ: <span id="timer-display" class="timer-alert">30</span>s</div>
+    </div>
+
+    <!-- แถบคำสั่งแนะนำประจำด่าน -->
+    <div id="instruction">⚡ คำสั่ง Bubble Sort: เลือกเซลล์พลังงาน 2 ช่องที่อยู่ติดกัน เพื่อสลับตำแหน่ง</div>
+
+    <!-- แผงวางเซลล์แบตเตอรี่ (Battery Bay) สร้างผ่าน JavaScript -->
+    <div class="battery-bay" id="battery-bay"></div>
+
+    <!-- ปุ่มควบคุมเกมเพลย์ระหว่างเล่น -->
+    <div class="action-group" id="game-action-buttons">
+        <button id="btn-cancel-action" class="btn-action btn-cancel hidden-in-menu" onclick="cancelSelection()">❌ ยกเลิกการเลือก</button>
+        <button id="btn-restart-action" class="btn-action btn-reset hidden-in-menu" onclick="loadStage(currentStage)">🔄 เริ่มด่านใหม่ (Restart)</button>
+    </div>
+
+    <div id="game-status"></div>
+</div>
+
+<script>
+    /* ==========================================================================
+       10. GAME DATA CONFIGURATION & STATE MANAGEMENT
+       การกำหนดโครงสร้างข้อมูลแคมเปญ 5 ด่าน และตัวแปรเก็บสถานะของเกม
+       ========================================================================== */
+    const algorithmCampaigns = {
+        bubble: [
+            { stage: 1, name: "Bubble Sort - Stage 1", count: 6, maxActions: 12, time: 30, desc: "เลือกเซลล์พลังงาน 2 ช่องที่อยู่ติดกันเพื่อสลับตำแหน่ง (6 เซลล์ - 30s)" },
+            { stage: 2, name: "Bubble Sort - Stage 2", count: 7, maxActions: 16, time: 35, desc: "เพิ่มความซับซ้อนขึ้นกับ 7 เซลล์พลังงาน (35s)" },
+            { stage: 3, name: "Bubble Sort - Stage 3", count: 8, maxActions: 20, time: 40, desc: "ระดับปานกลาง 8 เซลล์ ภายใต้เวลาที่กระชั้นชิด (40s)" },
+            { stage: 4, name: "Bubble Sort - Stage 4", count: 9, maxActions: 25, time: 45, desc: "โหมดท้าทาย 9 เซลล์ ต้องวางแผนการสลับอย่างรวดเร็ว (45s)" },
+            { stage: 5, name: "Bubble Sort - Boss Stage", count: 10, maxActions: 30, time: 50, desc: "ด่านบอสใหญ่ 10 เซลล์ ทดสอบความเร็วสูงสุด (50s)" }
+        ],
+        selection: [
+            { stage: 1, name: "Selection Sort - Stage 1", count: 6, maxActions: 10, time: 30, desc: "ค้นหาค่าที่ถูกต้องในฝั่งขวามาไว้ซ้ายสุด (6 เซลล์ - 30s)" },
+            { stage: 2, name: "Selection Sort - Stage 2", count: 7, maxActions: 13, time: 35, desc: "ขยับขึ้นมาที่ 7 เซลล์พลังงาน ค้นหาค่าให้แม่นยำ (35s)" },
+            { stage: 3, name: "Selection Sort - Stage 3", count: 8, maxActions: 16, time: 40, desc: "ระดับปานกลาง 8 เซลล์ ห้ามเลือกผิดพลาดเด็ดขาด (40s)" },
+            { stage: 4, name: "Selection Sort - Stage 4", count: 9, maxActions: 20, time: 45, desc: "โหมดท้าทาย 9 เซลล์ ภายใต้เวลาที่จำกัด (45s)" },
+            { stage: 5, name: "Selection Sort - Boss Stage", count: 10, maxActions: 24, time: 50, desc: "ด่านบอสใหญ่ 10 เซลล์ พิสูจน์ความเชี่ยวชาญ (50s)" }
+        ],
+        insertion: [
+            { stage: 1, name: "Insertion Sort - Stage 1", count: 6, maxActions: 10, time: 30, desc: "เลือกแบตเตอรี่แล้วคลิกช่องเป้าหมายเพื่อแทรก (6 เซลล์ - 30s)" },
+            { stage: 2, name: "Insertion Sort - Stage 2", count: 7, maxActions: 13, time: 35, desc: "เพิ่มจำนวนเป็น 7 เซลล์ จัดลำดับด้วยการแทรกข้อมูล (35s)" },
+            { stage: 3, name: "Insertion Sort - Stage 3", count: 8, maxActions: 16, time: 40, desc: "ระดับปานกลาง 8 เซลล์ วางแผนตำแหน่งแทรกให้ถูกต้อง (40s)" },
+            { stage: 4, name: "Insertion Sort - Stage 4", count: 9, maxActions: 20, time: 45, desc: "โหมดท้าทาย 9 เซลล์ ควบคุมเวลาอย่างระมัดระวัง (45s)" },
+            { stage: 5, name: "Insertion Sort - Boss Stage", count: 10, maxActions: 24, time: 50, desc: "ด่านบอสใหญ่ 10 เซลล์ พิสูจน์ความเชี่ยวชาญ (50s)" }
+        ]
+    };
+
+    // Global State Variables (ตัวแปรสถานะการทำงานของระบบเกม)
+    let selectedCampaign = 'bubble';    // แคมเปญโหมดปัจจุบัน ('bubble', 'selection', 'insertion')
+    let sortDirection = 'asc';          // ทิศทางการเรียง ('asc' = น้อยไปมาก, 'desc' = มากไปน้อย)
+    let currentStage = 1;               // ลำดับด่านปัจจุบัน (1 ถึง 5)
+    let array = [];                     // อาร์เรย์เก็บข้อมูลตัวเลขพลังงานในด่าน
+    let currentMode = 'bubble';         // โหมดที่กำลังเล่นอยู่จริง
+    let actionCount = 0;                // จำนวนครั้งที่ผู้เล่นปฏิบัติงานไปแล้วในด่านนี้
+    let totalActionsAccumulated = 0;    // จำนวนครั้งการกระทำรวมสะสมตลอดทั้งแคมเปญ
+    let maxActions = 18;                // โควต้าสูงสุดของการกระทำที่อนุญาต
+    let selectedIndex = null;           // Index ของเซลล์ที่ถูกเลือก (ใช้ใน Bubble และ Insertion)
+    let selectionPointer = 0;           // ตัวชี้ตำแหน่งที่ล็อกแล้ว (ใช้ใน Selection Sort)
+    let isGameOver = false;             // สถานะเช็คว่าเกมจบลงหรือยัง
+
+    // Timer Variables (ตัวแปรควบคุมระบบเวลา)
+    let timeLeft = 30;                  // เวลาที่เหลือในด่าน (วินาที)
+    let timerInterval = null;           // ตัวแปรเก็บ setInterval ของนาฬิกานับถอยหลัง
+    let totalTimeAccumulated = 0;       // เวลาสะสมรวมทั้งแคมเปญ
+    let stageStartTime = 0;             // เวลาเริ่มต้นของด่านปัจจุบัน (timestamp)
+
+    /* ==========================================================================
+       11. LOCALSTORAGE MATCH HISTORY SYSTEM
+       ระบบบันทึกและจัดการประวัติการเล่นลงใน LocalStorage ของเบราว์เซอร์
+       ========================================================================== */
+    // ฟังก์ชันบันทึกสถิติผลการเล่นรอบปัจจุบัน
+    function saveMatchHistory(mode, direction, timeSpent, totalActions, rank) {
+        let historyData = JSON.parse(localStorage.getItem('battery_rush_history')) || [];
+        
+        let newRecord = {
+            date: new Date().toLocaleDateString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+            mode: mode.toUpperCase(),
+            direction: direction === 'asc' ? 'น้อย➔มาก' : 'มาก➔น้อย',
+            time: timeSpent,
+            actions: totalActions,
+            rank: rank
+        };
+
+        historyData.unshift(newRecord);
+        if (historyData.length > 20) historyData.pop(); // จำกัดประวัติสูงสุด 20 รายการล่าสุด
+        localStorage.setItem('battery_rush_history', JSON.stringify(historyData));
+    }
+
+    // ฟังก์ชันเรนเดอร์ข้อมูลประวัติลงในตาราง HTML ตาม ID ของตารางที่กำหนด
+    function renderHistoryTable(tableBodyId = 'history-table-body') {
+        let historyData = JSON.parse(localStorage.getItem('battery_rush_history')) || [];
+        let tbody = document.getElementById(tableBodyId);
+        if(!tbody) return;
+        tbody.innerHTML = '';
+
+        if (historyData.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" style="color: #8c92a4;">ยังไม่มีประวัติการเล่นในระบบ</td></tr>`;
+            return;
+        }
+
+        historyData.forEach(item => {
+            let tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${item.date}</td>
+                <td>${item.mode}</td>
+                <td>${item.direction}</td>
+                <td>${item.time}s</td>
+                <td>${item.actions} ครั้ง</td>
+                <td><strong style="color: #00ff66;">${item.rank}</strong></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // ฟังก์ชันเปิด Modal ประวัติการเล่นจากหน้าเมนูหลัก
+    function openHistoryModal() {
+        renderHistoryTable('modal-history-body');
+        document.getElementById('history-modal').classList.add('show');
+    }
+
+    // ฟังก์ชันปิด Modal ประวัติการเล่น
+    function closeHistoryModal() {
+        document.getElementById('history-modal').classList.remove('show');
+    }
+
+    // ฟังก์ชันล้างข้อมูลประวัติการเล่นทั้งหมดใน LocalStorage
+    function clearHistoryData() {
+        if(confirm("คุณต้องการล้างประวัติการเล่นทั้งหมดใช่หรือไม่?")) {
+            localStorage.removeItem('battery_rush_history');
+            renderHistoryTable('modal-history-body');
+            renderHistoryTable('history-table-body');
+        }
+    }
+
+    /* ==========================================================================
+       12. MENU & NAVIGATION CONTROLLERS
+       ฟังก์ชันควบคุมการเปลี่ยนหน้าจอ เมนูหลัก และการตั้งค่าตัวเลือก
+       ========================================================================== */
+    // ฟังก์ชันเปลี่ยนโหมดแคมเปญจากเมนูหลัก และสลับคลาส active ของ UI ปุ่มเลือก
+    function setGameMode(mode) {
+        selectedCampaign = mode;
+        ['bubble', 'selection', 'insertion'].forEach(m => {
+            let el = document.getElementById(`mode-card-${m}`);
+            if(el) el.classList.toggle('active', m === mode);
+        });
+    }
+
+    // ฟังก์ชันกำหนดทิศทางการเรียงลำดับข้อมูล
+    function setSortDirection(dir) {
+        sortDirection = dir;
+        let ascEl = document.getElementById('label-asc');
+        let descEl = document.getElementById('label-desc');
+        if(ascEl) ascEl.classList.toggle('active', dir === 'asc');
+        if(descEl) descEl.classList.toggle('active', dir === 'desc');
+    }
+
+    // ฟังก์ชันเปิดคู่มือเกม
+    function openHelpModal() { document.getElementById('help-modal').classList.add('show'); }
+    
+    // ฟังก์ชันปิดคู่มือเกม
+    function closeHelpModal() { document.getElementById('help-modal').classList.remove('show'); }
+
+    // ฟังก์ชันเริ่มเกมจากหน้าจอเมนูหลัก (รีเซ็ตค่าเริ่มต้นทั้งหมดแล้วโหลด Stage 1)
+    function startGameFromMenu() {
+        document.getElementById('start-screen').classList.remove('show');
+        document.getElementById('btn-cancel-action').classList.remove('hidden-in-menu');
+        document.getElementById('btn-restart-action').classList.remove('hidden-in-menu');
+        currentStage = 1;
+        totalActionsAccumulated = 0;
+        loadStage(1);
+    }
+
+    // ฟังก์ชันกลับสู่หน้าจอเมนูหลัก (หยุดเวลาและซ่อน Overlay ต่างๆ)
+    function returnToMainMenu() {
+        clearInterval(timerInterval);
+        document.body.classList.remove('alarm-bg');
+        document.getElementById('main-container').classList.remove('pressure-pulse');
+        document.getElementById('victory-overlay').classList.remove('show');
+        document.getElementById('game-over-overlay').classList.remove('show');
+        document.getElementById('stage-clear-overlay').classList.remove('show');
+        document.getElementById('help-modal').classList.remove('show');
+        document.getElementById('history-modal').classList.remove('show');
+        document.getElementById('btn-cancel-action').classList.add('hidden-in-menu');
+        document.getElementById('btn-restart-action').classList.add('hidden-in-menu');
+        document.getElementById('start-screen').classList.add('show');
+    }
+
+    /* ==========================================================================
+       13. STAGE INITIALIZATION & TIMER LOGIC
+       ฟังก์ชันการโหลดข้อมูลด่าน การสุ่มค่าตัวเลข และระบบเวลาถอยหลัง
+       ========================================================================== */
+    // ฟังก์ชันโหลดข้อมูลและเตรียมความพร้อมของด่านที่ระบุ
+    function loadStage(stNum) {
+        currentStage = stNum;
+        let stagesList = algorithmCampaigns[selectedCampaign];
+        let cfg = stagesList[stNum - 1];
+
+        currentMode = selectedCampaign;
+        maxActions = cfg.maxActions;
+        timeLeft = cfg.time;
+
+        let dirText = (sortDirection === 'asc') ? ' [น้อย ➔ มาก]' : ' [มาก ➔ น้อย]';
+        document.getElementById('stage-badge').innerText = `STAGE ${cfg.stage}/5: ${cfg.name.toUpperCase()} (${cfg.count} CELLS)`;
+        document.getElementById('main-subtitle').innerText = `[ ${selectedCampaign.toUpperCase()} CAMPAIGN${dirText} ]`;
+        document.getElementById('mode-name').innerText = selectedCampaign.toUpperCase();
+        document.getElementById('instruction').innerText = `⚡ คำสั่ง: ${cfg.desc}`;
+
+        // สร้างชุดตัวเลขสองหลักใน "จำนวนหลักสิบ" แบบสุ่มไม่ซ้ำกัน (ช่วง 12 ถึง 96)
+        let pool = [];
+        while(pool.length < cfg.count) {
+            let randNum = Math.floor(Math.random() * 85) + 12;
+            if(!pool.includes(randNum)) {
+                pool.push(randNum);
+            }
+        }
+        array = pool;
+
+        // รีเซ็ตตัวแปรนับสถิติประจำด่าน
+        actionCount = 0;
+        selectedIndex = null;
+        selectionPointer = 0;
+        isGameOver = false;
+
+        document.getElementById('swap-count').innerText = actionCount;
+        document.getElementById('max-swap-limit').innerText = maxActions;
+        document.getElementById('timer-display').innerText = timeLeft;
+        document.getElementById('main-container').classList.remove('pressure-pulse');
+        document.body.classList.remove('alarm-bg');
+        document.getElementById('game-over-overlay').classList.remove('show');
+        document.getElementById('stage-clear-overlay').classList.remove('show');
+        document.getElementById('victory-overlay').classList.remove('show');
+        document.getElementById('warning-modal').classList.remove('show');
+        document.getElementById('game-status').innerText = '';
+
+        document.getElementById('btn-cancel-action').classList.remove('hidden-in-menu');
+        document.getElementById('btn-restart-action').classList.remove('hidden-in-menu');
+
+        // บันทึกเวลาเริ่มต้นด่านแรก
+        if (stNum === 1) {
+            totalTimeAccumulated = 0;
+            totalActionsAccumulated = 0;
+        }
+        stageStartTime = Date.now();
+
+        renderBatteries();
+        startTimer();
+    }
+
+    // ฟังก์ชันควบคุมเวลาถอยหลัง (Countdown Timer System) อัปเดตทุกๆ 1 วินาที
+    function startTimer() {
+        clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            if (isGameOver || checkIsSorted()) {
+                clearInterval(timerInterval);
+                return;
+            }
+            
+            timeLeft--;
+            document.getElementById('timer-display').innerText = Math.max(0, timeLeft);
+
+            // กระตุ้นเอฟเฟกต์เตือนภัยเมื่อเวลาเหลือน้อยกว่าหรือเท่ากับ 10 วินาที
+            if (timeLeft <= 10) {
+                document.body.classList.add('alarm-bg');
+                document.getElementById('main-container').classList.add('pressure-pulse');
+            }
+
+            // หากเวลาหมดลง ถือว่าภารกิจล้มเหลวทันที (Game Over)
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                triggerGameOver('⏱️ [TIMEOUT] เวลาควบคุมพลังงานหมดลง! เครื่องจักรระเบิด!');
+            }
+        }, 1000);
+    }
+
+    // ฟังก์ชันยกเลิกการเลือกเซลล์แบตเตอรี่ชั่วคราว
+    function cancelSelection() {
+        if (isGameOver || checkIsSorted()) return;
+        selectedIndex = null;
+        renderBatteries();
+    }
+
+    // ฟังก์ชันแสดง Modal แจ้งเตือนเมื่อทำผิดกฎ
+    function showWarningModal(msg) {
+        document.getElementById('warning-message').innerText = msg;
+        document.getElementById('warning-modal').classList.add('show');
+    }
+    
+    // ฟังก์ชันปิด Modal แจ้งเตือน
+    function closeWarningModal() { document.getElementById('warning-modal').classList.remove('show'); }
+
+    // ฟังก์ชันสั่งจบเกมเมื่อแพ้ (Game Over)
+    function triggerGameOver(msg) {
+        isGameOver = true;
+        clearInterval(timerInterval);
+        document.body.classList.remove('alarm-bg');
+        document.getElementById('main-container').classList.remove('pressure-pulse');
+        document.getElementById('over-message').innerText = msg;
+        document.getElementById('btn-cancel-action').classList.add('hidden-in-menu');
+        document.getElementById('btn-restart-action').classList.add('hidden-in-menu');
+        document.getElementById('game-over-overlay').classList.add('show');
+    }
+
+    // ฟังก์ชันควบคุมการเปลี่ยนไปด่านถัดไป หรือแสดงหน้าสรุปผลเมื่อจบด่าน 5
+    function nextStage() {
+        if (currentStage < 5) {
+            loadStage(currentStage + 1);
+        } else {
+            document.getElementById('stage-clear-overlay').classList.remove('show');
+            let totalTime = Math.floor((Date.now() - stageStartTime) / 1000) + totalTimeAccumulated;
+            
+            document.getElementById('summary-mode').innerText = selectedCampaign.toUpperCase() + " Campaign";
+            document.getElementById('summary-dir').innerText = (sortDirection === 'asc') ? 'น้อยไปมาก (Ascending)' : 'มากไปน้อย (Descending)';
+            document.getElementById('summary-time').innerText = totalTime;
+            document.getElementById('summary-actions').innerText = totalActionsAccumulated;
+
+            // ระบบคำนวณเกรดประสิทธิภาพการเล่น (Performance Rank Assessment)
+            let rank = "S (Master Engineer)";
+            if (totalTime > 150 || totalActionsAccumulated > 80) rank = "A (Senior Engineer)";
+            if (totalTime > 220 || totalActionsAccumulated > 110) rank = "B (Trainee Engineer)";
+            document.getElementById('summary-rank').innerText = rank;
+
+            // บันทึกประวัติและอัปเดตตาราง
+            saveMatchHistory(selectedCampaign, sortDirection, totalTime, totalActionsAccumulated, rank);
+            renderHistoryTable('history-table-body');
+
+            document.getElementById('btn-cancel-action').classList.add('hidden-in-menu');
+            document.getElementById('btn-restart-action').classList.add('hidden-in-menu');
+
+            document.getElementById('victory-overlay').classList.add('show');
+        }
+    }
+
+    // ฟังก์ชันเรนเดอร์เซลล์แบตเตอรี่ลงในหน้าจอ และตรวจสอบเงื่อนไขผ่านด่าน
+    function renderBatteries() {
+        const bay = document.getElementById('battery-bay');
+        bay.innerHTML = '';
+        
+        let isSorted = checkIsSorted();
+
+        array.forEach((val, idx) => {
+            const cell = document.createElement('div');
+            cell.className = 'battery-cell';
+            
+            if (selectedIndex === idx) cell.classList.add('selected');
+            if (isSorted) cell.classList.add('sorted');
+            
+            cell.innerHTML = `<span>${val}</span>`;
+            cell.onclick = () => handleCellClick(idx);
+            bay.appendChild(cell);
+        });
+
+        // หากจัดเรียงถูกต้องแล้ว ให้หยุดเวลาและแสดงหน้าผ่านด่าน
+        if (isSorted && !isGameOver) {
+            isGameOver = true;
+            clearInterval(timerInterval);
+            document.body.classList.remove('alarm-bg');
+            document.getElementById('main-container').classList.remove('pressure-pulse');
+            
+            let timeSpent = Math.floor((Date.now() - stageStartTime) / 1000);
+            totalTimeAccumulated += timeSpent;
+            totalActionsAccumulated += actionCount;
+
+            document.getElementById('btn-cancel-action').classList.add('hidden-in-menu');
+            document.getElementById('btn-restart-action').classList.add('hidden-in-menu');
+
+            if (currentStage < 5) {
+                document.getElementById('clear-message').innerText = `ผ่านด่านที่ ${currentStage} สำเร็จ! (ใช้เวลา ${timeSpent} วินาที)`;
+                document.getElementById('stage-clear-overlay').classList.add('show');
+            } else {
+                nextStage();
+            }
+        }
+    }
+
+    /* ==========================================================================
+       14. SORTING ALGORITHMS CORE LOGIC & DETAILED COMMENTS
+       ฟังก์ชันหลักในการควบคุมและตรวจสอบกฎเกณฑ์ของ Sorting Algorithm ทั้ง 3 ชนิด
+       ========================================================================== */
+    function handleCellClick(idx) {
+        if (isGameOver || checkIsSorted()) return;
+
+        /* 
+           ----------------------------------------------------------------------
+           [1] BUBBLE SORT ALGORITHM MECHANISM
+           ----------------------------------------------------------------------
+           แนวคิด: เปรียบเทียบข้อมูลช่องที่อยู่ติดกัน (Adjacent Elements) และสลับตำแหน่ง 
+           หากเรียงลำดับผิดเงื่อนไข โดยในเกมจำกัดให้ผู้เล่นเลือกคลิกได้เฉพาะ 2 ช่องที่อยู่ 
+           ติดกันเท่านั้น (Index ต่างกันอยู่ 1) ถึงจะทำการสลับค่า (Swap) กันได้
+        */
+        if (currentMode === 'bubble') {
+            if (selectedIndex === null) {
+                selectedIndex = idx; // คลิกเลือกเซลล์เริ่มต้น
+            } else {
+                // ตรวจสอบว่าช่องที่สองอยู่ติดกับช่องแรกหรือไม่ (|index1 - index2| == 1)
+                if (Math.abs(selectedIndex - idx) === 1) {
+                    let temp = array[selectedIndex];
+                    array[selectedIndex] = array[idx];
+                    array[idx] = temp;
+                    actionCount++;
+                    selectedIndex = null;
+                } else {
+                    showWarningModal('⚠️ Bubble Sort บังคับให้เลือกเซลล์ที่อยู่ติดกันเท่านั้น!');
+                    selectedIndex = idx; // เปลี่ยนมาเลือกช่องใหม่แทน
+                }
+            }
+        } 
+        
+        /* 
+           ----------------------------------------------------------------------
+           [2] SELECTION SORT ALGORITHM MECHANISM
+           ----------------------------------------------------------------------
+           แนวคิด: ค้นหาค่าที่ถูกต้องที่สุด (ค่าน้อยที่สุดสำหรับ Ascending หรือค่ามากที่สุด 
+           สำหรับการ Descending) จากช่วงข้อมูลฝั่งขวาที่ยังไม่ได้จัดเรียง แล้วนำมาวางไว้ 
+           ที่ตำแหน่งตัวชี้ (selectionPointer) ทีละตำแหน่งจากซ้ายไปขวา
+        */
+        else if (currentMode === 'selection') {
+            let targetVal = array[selectionPointer];
+            let targetIdx = selectionPointer;
+
+            // ค้นหาค่าเป้าหมายที่ถูกต้องจากเรนจ์ที่เหลือทางฝั่งขวา
+            for (let i = selectionPointer; i < array.length; i++) {
+                if (sortDirection === 'asc') {
+                    if (array[i] < targetVal) { targetVal = array[i]; targetIdx = i; }
+                } else {
+                    if (array[i] > targetVal) { targetVal = array[i]; targetIdx = i; }
+                }
+            }
+
+            // ตรวจสอบว่าผู้เล่นคลิกถูกช่องเป้าหมายหรือไม่
+            if (idx === targetIdx) {
+                let temp = array[selectionPointer];
+                array[selectionPointer] = array[targetIdx];
+                array[targetIdx] = temp;
+                selectionPointer++; // เลื่อนตัวชี้ล็อกตำแหน่งถัดไปทางขวา
+                actionCount++;
+            } else {
+                showWarningModal('⚠️ ผิดกฎ Selection Sort! ต้องเลือกเซลล์เป้าหมายที่ถูกต้องในฝั่งขวา');
+            }
+        } 
+        
+        /* 
+           ----------------------------------------------------------------------
+           [3] INSERTION SORT ALGORITHM MECHANISM
+           ----------------------------------------------------------------------
+           แนวคิด: เลือกข้อมูลก้อนที่ต้องการ (Source) แล้วนำไปแทรก (Insert) ลงในตำแหน่ง 
+           เป้าหมายที่ต้องการ โดยข้อมูลระหว่างทางจะถูกขยับเพื่อเปิดทางให้ค่าที่เลือก 
+           แทรกเข้าไปอยู่ได้อย่างถูกต้อง
+        */
+        else if (currentMode === 'insertion') {
+            if (selectedIndex === null) {
+                selectedIndex = idx; // เลือกแบตเตอรี่ก้อนต้นทางที่ต้องการย้าย
+            } else {
+                let valToInsert = array[selectedIndex];
+                array.splice(selectedIndex, 1); // ตัดค่าออกจากตำแหน่งเดิม
+                array.splice(idx, 0, valToInsert); // แทรกค่าลงในตำแหน่งเป้าหมายใหม่
+                actionCount++;
+                selectedIndex = null;
+            }
+        }
+
+        document.getElementById('swap-count').innerText = actionCount;
+
+        // ตรวจสอบโควต้าการกระทำ หากเกินขีดจำกัดจะถือว่าภารกิจล้มเหลว
+        if (actionCount >= maxActions && !checkIsSorted()) {
+            triggerGameOver(`คุณใช้สิทธิ์ครบ ${maxActions} ครั้งแล้ว แต่แกนพลังงานยังไม่เสถียร! เครื่องจักรระเบิด!`);
+            return;
+        }
+
+        renderBatteries();
+    }
+
+    /* ==========================================================================
+       15. VALIDATION LOGIC
+       ฟังก์ชันตรวจสอบสถานะความถูกต้องของการเรียงลำดับ (Check Is Sorted)
+       ========================================================================== */
+    function checkIsSorted() {
+        if (currentMode === 'selection' && selectionPointer >= array.length - 1) {
+            return true;
+        }
+        for (let i = 0; i < array.length - 1; i++) {
+            if (sortDirection === 'asc') {
+                if (array[i] > array[i+1]) { return false; }
+            } else {
+                if (array[i] < array[i+1]) { return false; }
+            }
+        }
+        return true;
+    }
+</script>
+
+</body>
+</html>
